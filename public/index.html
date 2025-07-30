@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tra cứu học sinh</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>🔒 Tra cứu danh sách học sinh</h1>
+    <input type="password" id="accessCode" placeholder="Nhập mã truy cập..." />
+    <button onclick="submit()">Xem danh sách</button>
+    <div id="loading" class="hidden">⏳ Đang kiểm tra...</div>
+    <pre id="result"></pre>
+  </div>
+
+  <script>
+    async function submit() {
+      const code = document.getElementById("accessCode").value;
+      document.getElementById("loading").classList.remove("hidden");
+      document.getElementById("result").textContent = "";
+      try {
+        const res = await axios.post("/api/get-students", { access_code: code });
+        document.getElementById("loading").classList.add("hidden");
+
+        if (res.data.success) {
+          const lines = res.data.students.map(s => `${s.name} (${s.id}) - ${s.birthday}`);
+          document.getElementById("result").textContent = lines.join("\n");
+        } else {
+          document.getElementById("result").textContent = "❌ " + res.data.error;
+        }
+      } catch {
+        document.getElementById("result").textContent = "❌ Lỗi kết nối máy chủ.";
+        document.getElementById("loading").classList.add("hidden");
+      }
+    }
+  </script>
+</body>
+</html>
