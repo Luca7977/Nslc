@@ -16,71 +16,61 @@ app.post('/api/get-students', async (req, res) => {
   const ip = req.ip;
   const { access_code, mode, extra_code } = req.body;
 
-  // 1. Kiểm block IP
+  // Kiểm tra IP bị chặn
   if (isBlocked(ip)) {
-    return res.status(429).json({ error: `Bạn đã thử quá nhiều lần. Thử lại sau ${process.env.BLOCK_DURATION_MIN} phút.` });
+    return res.status(429).json({
+      error: `Bạn đã thử quá nhiều lần. Thử lại sau ${process.env.BLOCK_DURATION_MIN || 30} phút.`,
+    });
   }
 
-  // 2. Truy vấn Supabase: lấy tất cả record có code khớp group hoặc personal
+  // Truy vấn bảng Supabase từ biến môi trường
+  const tableName = process.env.SUPABASE_STUDENT_TABLE || 'students';
+
   const { data, error } = await supabase
-    .from('students')
-    .select('id, full_name, birthday, class, group_access_code, personal_access_code')
+    .from(tableName)
+    .select('id, full_name, class, birthday, birth_day, birth_month, group_access_code, personal_access_code')
     .or(`group_access_code.eq.${access_code},personal_access_code.eq.${access_code}`);
 
   if (error) {
-    // Log DB error
     await logAccess({ ip, code: access_code, mode: null, result: 'error_db' });
-    return res.status(500).json({ error: 'Lỗi truy vấn database.' });
+    return res.status(500).json({ error: 'Lỗi truy vấn Supabase' });
   }
 
-  // 3. Xác định mode và record student
-  let studentList = [];
-  let studentRecord = null;
+  let students = [];
+  let modeDetected = null;
 
   if (data.some(r => r.group_access_code === access_code)) {
-    studentList = data.filter(r => r.group_access_code === access_code);
-    modeChosen = 'group';
+    students = data.filter(r => r.group_access_code === access_code);
+    modeDetected = 'group';
   } else if (data.some(r => r.personal_access_code === access_code)) {
-    studentRecord = data.find(r => r.personal_access_code === access_code);
-    modeChosen = 'personal';
+    students = data.filter(r => r.personal_access_code === access_code);
+    modeDetected = 'personal';
   } else {
-    modeChosen = null;
-  }
-
-  // 4. Nếu không tìm thấy → record fail và log
-  if (!modeChosen) {
     recordFail(ip);
     await logAccess({ ip, code: access_code, mode: null, result: 'invalid_code' });
     return res.status(403).json({ error: 'Mã truy cập không hợp lệ.' });
   }
 
-  // 5. Clear block nếu thành công
-  clear(ip);
+  clear(ip); // Xóa lỗi nếu truy cập hợp lệ
 
-  // 6. Chuẩn bị dữ liệu trả về
   const showBirthday = extra_code === process.env.BIRTHDAY_VIEW_CODE;
-  let resultData = [];
 
-  if (modeChosen === 'group') {
-    resultData = studentList.map(s => ({
-      full_name: s.full_name,
-      class: s.class,
-      ...(showBirthday ? { birthday: s.birthday } : {})
-    }));
-  } else {
-    resultData = [{
-      full_name: studentRecord.full_name,
-      class: studentRecord.class,
-      ...(showBirthday ? { birthday: studentRecord.birthday } : {})
-    }];
-  }
+  const result = students.map(s => ({
+    full_name: s.full_name || s.name,
+    class: s.class,
+    ...(showBirthday
+      ? s.birthday
+        ? { birthday: s.birthday }
+        : { birthday: `${s.birth_day}/${s.birth_month}` }
+      : {}),
+  }));
 
-  // 7. Log success
-  await logAccess({ ip, code: access_code, mode: modeChosen, result: 'success' });
+  await logAccess({ ip, code: access_code, mode: modeDetected, result: 'success' });
 
-  // 8. Trả về
-  return res.json({ mode: modeChosen, students: resultData });
+  return res.json({ mode: modeDetected, students: result });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`✅ Server đang chạy tại http://localhost:${PORT}`);
+});
