@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tra cứu học sinh</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Tra cứu học sinh</h1>
+    <form id="form">
+      <select id="mode">
+        <option value="group">Truy cập lớp</option>
+        <option value="personal">Truy cập cá nhân</option>
+      </select>
+      <input id="access_code" type="text" placeholder="Mã truy cập" required>
+      <input id="extra_code" type="text" placeholder="Mã xem ngày sinh (nếu có)">
+      <button type="submit">Tra cứu</button>
+    </form>
+    <pre id="result"></pre>
+  </div>
+  <script>
+    document.getElementById('form').onsubmit = async e => {
+      e.preventDefault();
+      const res = await fetch('/api/get-students', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          access_code: document.getElementById('access_code').value,
+          mode: document.getElementById('mode').value,
+          extra_code: document.getElementById('extra_code').value
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById('result').textContent = JSON.stringify(data.students, null, 2);
+      } else {
+        document.getElementById('result').textContent = '❌ ' + data.error;
+      }
+    };
+  </script>
+</body>
+</html>
+ lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tra cứu học sinh</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>🔒 Tra cứu danh sách học sinh</h1>
+    <input type="password" id="accessCode" placeholder="Nhập mã truy cập..." />
+    <button onclick="submit()">Xem danh sách</button>
+    <div id="loading" class="hidden">⏳ Đang kiểm tra...</div>
+    <pre id="result"></pre>
+  </div>
+
+  <script>
+    async function submit() {
+      const code = document.getElementById("accessCode").value;
+      document.getElementById("loading").classList.remove("hidden");
+      document.getElementById("result").textContent = "";
+      try {
+        const res = await axios.post("/api/get-students", { access_code: code });
+        document.getElementById("loading").classList.add("hidden");
+
+        if (res.data.success) {
+          const lines = res.data.students.map(s => `${s.name} (${s.id}) - ${s.birthday}`);
+          document.getElementById("result").textContent = lines.join("\n");
+        } else {
+          document.getElementById("result").textContent = "❌ " + res.data.error;
+        }
+      } catch {
+        document.getElementById("result").textContent = "❌ Lỗi kết nối máy chủ.";
+        document.getElementById("loading").classList.add("hidden");
+      }
+    }
+  </script>
+</body>
+</html>

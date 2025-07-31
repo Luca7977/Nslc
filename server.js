@@ -1,101 +1,86 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const dotenv = require("dotenv");
-const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
-const CryptoJS = require("crypto-js");
+const express = require('express');
+const cors = require('cors');
+require('dotenv').config();
 
-dotenv.config();
+const supabase = require('./supabaseClient');
+const checkAccess = require('./utils/checkAccess');
+const logAccess = require('./utils/logAccess');
+const { isBlocked, recordFail, clear } = require('./utils/blockIP');
+
 const app = express();
-app.use(bodyParser.json());
-app.use(express.static("public")); // index.html, style.css
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public'));
 
-const LOG_FILE = path.join(__dirname, "logs/access_log.json");
-const ipAttemptMap = {};
-const MAX_FAILS = 5;
-const BLOCK_TIME = 30 * 60 * 1000; // 30 phút
+app.post('/api/get-students', async (req, res) => {
+  const ip = req.ip;
+  const { access_code, mode, extra_code } = req.body;
 
-const CLASS_CONFIG = {
-  "LOP9A2024": {
-    aesKey: "LOP9A2024".padEnd(16, "0"),
-    dataUrl: "https://your-project.supabase.co/storage/v1/object/public/students_9A_encrypted.json"
-  }
-};
-
-function logAccess(entry) {
-  let logs = [];
-  if (fs.existsSync(LOG_FILE)) {
-    logs = JSON.parse(fs.readFileSync(LOG_FILE, "utf8"));
-  }
-  logs.push(entry);
-  fs.writeFileSync(LOG_FILE, JSON.stringify(logs, null, 2));
-}
-
-function isBlocked(ip) {
-  const now = Date.now();
-  const attempts = ipAttemptMap[ip] || [];
-  const recent = attempts.filter(t => now - t < 10 * 60 * 1000);
-  ipAttemptMap[ip] = recent;
-  return recent.length >= MAX_FAILS;
-}
-
-app.post("/api/get-students", async (req, res) => {
-  const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
-  const code = req.body.access_code?.trim();
-  const config = CLASS_CONFIG[code];
-  const nowStr = new Date().toISOString();
-
-  const logEntry = {
-    timestamp: nowStr,
-    ip,
-    access_code: code,
-    success: false
-  };
-
+  // 1. Kiểm block IP
   if (isBlocked(ip)) {
-    logEntry.error = "IP bị chặn";
-    logAccess(logEntry);
-    return res.json({ success: false, error: "Bạn nhập sai quá nhiều lần. Hãy thử lại sau." });
+    return res.status(429).json({ error: `Bạn đã thử quá nhiều lần. Thử lại sau ${process.env.BLOCK_DURATION_MIN} phút.` });
   }
 
-  if (!config) {
-    ipAttemptMap[ip] = [...(ipAttemptMap[ip] || []), Date.now()];
-    logEntry.error = "Mã truy cập sai";
-    logAccess(logEntry);
-    return res.json({ success: false, error: "Mã truy cập không hợp lệ." });
+  // 2. Truy vấn Supabase: lấy tất cả record có code khớp group hoặc personal
+  const { data, error } = await supabase
+    .from('students')
+    .select('id, full_name, birthday, class, group_access_code, personal_access_code')
+    .or(`group_access_code.eq.${access_code},personal_access_code.eq.${access_code}`);
+
+  if (error) {
+    // Log DB error
+    await logAccess({ ip, code: access_code, mode: null, result: 'error_db' });
+    return res.status(500).json({ error: 'Lỗi truy vấn database.' });
   }
 
-  try {
-    const response = await axios.get(config.dataUrl);
-    const encrypted = response.data.data;
+  // 3. Xác định mode và record student
+  let studentList = [];
+  let studentRecord = null;
 
-    const key = CryptoJS.enc.Utf8.parse(config.aesKey);
-    const decrypted = CryptoJS.AES.decrypt(encrypted, key, {
-      mode: CryptoJS.mode.ECB,
-      padding: CryptoJS.pad.Pkcs7
-    });
-
-    const plain = decrypted.toString(CryptoJS.enc.Utf8);
-    const parsed = JSON.parse(plain);
-
-    if (parsed.expired_at && new Date().toISOString() > parsed.expired_at) {
-      logEntry.error = "Mã hết hạn";
-      logAccess(logEntry);
-      return res.json({ success: false, error: "Mã truy cập đã hết hạn." });
-    }
-
-    logEntry.success = true;
-    logAccess(logEntry);
-    return res.json({ success: true, students: parsed.students });
-
-  } catch (err) {
-    ipAttemptMap[ip] = [...(ipAttemptMap[ip] || []), Date.now()];
-    logEntry.error = "Giải mã thất bại";
-    logAccess(logEntry);
-    return res.json({ success: false, error: "Không thể giải mã dữ liệu." });
+  if (data.some(r => r.group_access_code === access_code)) {
+    studentList = data.filter(r => r.group_access_code === access_code);
+    modeChosen = 'group';
+  } else if (data.some(r => r.personal_access_code === access_code)) {
+    studentRecord = data.find(r => r.personal_access_code === access_code);
+    modeChosen = 'personal';
+  } else {
+    modeChosen = null;
   }
+
+  // 4. Nếu không tìm thấy → record fail và log
+  if (!modeChosen) {
+    recordFail(ip);
+    await logAccess({ ip, code: access_code, mode: null, result: 'invalid_code' });
+    return res.status(403).json({ error: 'Mã truy cập không hợp lệ.' });
+  }
+
+  // 5. Clear block nếu thành công
+  clear(ip);
+
+  // 6. Chuẩn bị dữ liệu trả về
+  const showBirthday = extra_code === process.env.BIRTHDAY_VIEW_CODE;
+  let resultData = [];
+
+  if (modeChosen === 'group') {
+    resultData = studentList.map(s => ({
+      full_name: s.full_name,
+      class: s.class,
+      ...(showBirthday ? { birthday: s.birthday } : {})
+    }));
+  } else {
+    resultData = [{
+      full_name: studentRecord.full_name,
+      class: studentRecord.class,
+      ...(showBirthday ? { birthday: studentRecord.birthday } : {})
+    }];
+  }
+
+  // 7. Log success
+  await logAccess({ ip, code: access_code, mode: modeChosen, result: 'success' });
+
+  // 8. Trả về
+  return res.json({ mode: modeChosen, students: resultData });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("✅ Server đang chạy tại cổng", PORT));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
