@@ -1,1 +1,198 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tra cứu học sinh</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: #f5f7fa;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      align-items: center;
+    }
+
+    .container {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      width: 90%;
+      max-width: 600px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    label {
+      font-weight: 600;
+      margin-top: 5px;
+    }
+
+    input, select {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    button {
+      padding: 12px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    #result {
+      margin-top: 20px;
+    }
+
+    .success {
+      color: #333;
+    }
+
+    .error {
+      color: #c0392b;
+      font-weight: bold;
+    }
+
+    .result-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 15px;
+    }
+
+    .result-table th,
+    .result-table td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+
+    .result-table th {
+      background-color: #007bff;
+      color: white;
+    }
+
+    .result-table tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+
+    .result-table tr:hover {
+      background-color: #eef;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Tra cứu học sinh demo</h1>
+    <form id="form">
+      <label for="mode">Chế độ tra cứu:</label>
+      <select id="mode">
+        <option value="group">Truy cập lớp</option>
+        <option value="personal">Truy cập cá nhân</option>
+      </select>
+
+      <label for="access_code">Mã truy cập:</label>
+      <input id="access_code" type="text" placeholder="Nhập mã truy cập" required />
+
+      <label for="extra_code">Mã xem ngày sinh (nếu có):</label>
+      <input id="extra_code" type="text" placeholder="Nhập mã ngày sinh (nếu có)" />
+
+      <button type="submit">🔍 Tra cứu</button>
+    </form>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    document.getElementById('form').onsubmit = async e => {
+      e.preventDefault();
+      const resultEl = document.getElementById('result');
+      resultEl.innerHTML = '⏳ Đang tra cứu...';
+      resultEl.className = '';
+
+      const res = await fetch('/api/get-students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_code: document.getElementById('access_code').value,
+          mode: document.getElementById('mode').value,
+          extra_code: document.getElementById('extra_code').value
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && Array.isArray(data.students)) {
+        if (data.students.length === 0) {
+          resultEl.innerHTML = '⚠️ Không tìm thấy học sinh nào.';
+          resultEl.className = 'error';
+          return;
+        }
+
+        const table = document.createElement('table');
+        table.className = 'result-table';
+
+        // Tiêu đề cột
+        const headers = Object.keys(data.students[0]);
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        headers.forEach(h => {
+          const th = document.createElement('th');
+          th.textContent = h;
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Dữ liệu
+        const tbody = document.createElement('tbody');
+        data.students.forEach(student => {
+          const row = document.createElement('tr');
+          headers.forEach(h => {
+            const td = document.createElement('td');
+            td.textContent = student[h];
+            row.appendChild(td);
+          });
+          tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+
+        resultEl.innerHTML = '';
+        resultEl.appendChild(table);
+        resultEl.className = 'success';
+      } else {
+        resultEl.textContent = '❌ ' + data.error;
+        resultEl.className = 'error';
+      }
+    };
+  </script>
+</body>
+</html>
 
