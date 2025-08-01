@@ -32,9 +32,11 @@ app.post('/api/get-students', async (req, res) => {
     .or(`group_access_code.eq.${access_code},personal_access_code.eq.${access_code}`);
 
   if (error) {
+  console.error('[SUPABASE ERROR]', error); // 👈 In lỗi ra console
   await logAccess({ ip, code: access_code, mode: null, result: 'error_db' });
-  return res.status(500).json({ error: 'Lỗi truy vấn Supabase' });
+  return res.status(500).json({ error: 'Lỗi truy vấn Supabase', details: error.message || error });
 }
+
 
 
   let students = [];
