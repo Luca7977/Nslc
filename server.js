@@ -28,7 +28,7 @@ app.post('/api/get-students', async (req, res) => {
 
   const { data, error } = await supabase
     .from(tableName)
-    .select('id, name, class, birth_day, birth_month, group_code, private_code')
+    .select('id, name, class, birth_day, birth_month, group_code, private_code, avatar_url')
     .or(`group_code.eq.${access_code},private_code.eq.${access_code}`);
 
   if (error) {
