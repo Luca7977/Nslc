@@ -141,67 +141,88 @@
   </div>
 
   <script>
-    document.getElementById('form').onsubmit = async e => {
-      e.preventDefault();
-      const resultEl = document.getElementById('result');
-      resultEl.innerHTML = '⏳ Đang tra cứu...';
-      resultEl.className = '';
+   document.getElementById("accessForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-      const res = await fetch('/api/get-students', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          access_code: document.getElementById('access_code').value,
-          mode: document.getElementById('mode').value,
-          extra_code: document.getElementById('extra_code').value
-        })
-      });
+  const access_code = document.getElementById("access_code").value.trim();
+  const birthday_code = document.getElementById("birthday_code").value.trim();
 
-      const data = await res.json();
+  const resultBox = document.getElementById("result");
+  const errorBox = document.getElementById("error");
+  resultBox.innerHTML = "";
+  errorBox.textContent = "";
 
-      if (res.ok && Array.isArray(data.students)) {
-        if (data.students.length === 0) {
-          resultEl.innerHTML = '⚠️ Không tìm thấy học sinh nào.';
-          resultEl.className = 'error';
-          return;
+  try {
+    const res = await fetch("/api/get-students", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        access_code,
+        extra_code: birthday_code
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      errorBox.textContent = data.error || "Đã xảy ra lỗi.";
+      return;
+    }
+
+    if (!data.students || data.students.length === 0) {
+      errorBox.textContent = "Không tìm thấy học sinh nào.";
+      return;
+    }
+
+    // Tạo bảng kết quả
+    const headers = Object.keys(data.students[0]);
+    const table = document.createElement("table");
+    const thead = document.createElement("thead");
+    const tbody = document.createElement("tbody");
+
+    // Tạo tiêu đề
+    const headRow = document.createElement("tr");
+    headers.forEach(header => {
+      const th = document.createElement("th");
+      th.textContent = header === "full_name" ? "Họ và tên"
+                    : header === "class" ? "Lớp"
+                    : header === "birthday" ? "Ngày sinh"
+                    : header === "avatar_url" ? "Ảnh"
+                    : header;
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+
+    // Tạo từng dòng dữ liệu
+    data.students.forEach(student => {
+      const row = document.createElement("tr");
+
+      headers.forEach(h => {
+        const td = document.createElement("td");
+
+        if (h === 'avatar_url' && student[h]) {
+          td.innerHTML = `<img src="${student[h]}" class="avatar-img" />`;
+        } else {
+          td.textContent = student[h] || '🔒';
         }
 
-        const table = document.createElement('table');
-        table.className = 'result-table';
+        row.appendChild(td);
+      });
 
-        // Tiêu đề cột
-        const headers = Object.keys(data.students[0]);
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        headers.forEach(h => {
-          const th = document.createElement('th');
-          th.textContent = h;
-          headerRow.appendChild(th);
-        });
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
+      tbody.appendChild(row);
+    });
 
-        // Dữ liệu
-        const tbody = document.createElement('tbody');
-        data.students.forEach(student => {
-          const row = document.createElement('tr');
-          headers.forEach(h => {
-            const td = document.createElement('td');
-            td.textContent = student[h];
-            row.appendChild(td);
-          });
-          tbody.appendChild(row);
-        });
-        table.appendChild(tbody);
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    resultBox.appendChild(table);
 
-        resultEl.innerHTML = '';
-        resultEl.appendChild(table);
-        resultEl.className = 'success';
-      } else {
-        resultEl.textContent = '❌ ' + data.error;
-        resultEl.className = 'error';
-      }
-    };
+  } catch (err) {
+    errorBox.textContent = "Không thể kết nối máy chủ.";
+    console.error(err);
+  }
+});  
   </script>
 </body>
 </html>
