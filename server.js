@@ -56,11 +56,12 @@ app.post('/api/get-students', async (req, res) => {
 
   const showBirthday = extra_code === process.env.BIRTHDAY_VIEW_CODE;
 
-  const result = students.map(s => ({
-    full_name: s.name,
-    class: s.class,
-    ...(showBirthday ? { birthday: `${s.birth_day}/${s.birth_month}` } : {})
-  }));
+ const result = students.map(s => ({
+  full_name: s.name,
+  class: s.class,
+  avatar_url: s.avatar_url,   // 👈 Thêm dòng này
+  ...(showBirthday ? { birthday: `${s.birth_day}/${s.birth_month}` } : {})
+}));
 
   await logAccess({ ip, code: access_code, mode: modeDetected, result: 'success' });
 
