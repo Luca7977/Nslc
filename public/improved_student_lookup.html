@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tra cứu học sinh</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      --error-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+      --glass-bg: rgba(255, 255, 255, 0.25);
+      --glass-border: rgba(255, 255, 255, 0.18);
+      --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+      --text-primary: #2d3748;
+      --text-secondary: #4a5568;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='rgba(255,255,255,0.1)'%3E%3Cpath d='M0 0h40v40H0V0zm10 10h20v20H10V10z'/%3E%3C/g%3E%3C/svg%3E");
+      animation: float 20s ease-in-out infinite;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-10px) rotate(2deg); }
+    }
+
+    @keyframes slideInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200px 0; }
+      100% { background-position: calc(200px + 100%) 0; }
+    }
+
+    .container {
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 20px;
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--shadow);
+      padding: 40px;
+      width: 100%;
+      max-width: 700px;
+      position: relative;
+      animation: slideInUp 0.8s ease-out;
+    }
+
+    .container::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: var(--primary-gradient);
+      border-radius: 22px;
+      z-index: -1;
+      opacity: 0.6;
+      animation: pulse 4s ease-in-out infinite;
+    }
+
+    h1 {
+      text-align: center;
+      background: var(--primary-gradient);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 30px;
+      position: relative;
+    }
+
+    h1::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 3px;
+      background: var(--secondary-gradient);
+      border-radius: 2px;
+      animation: shimmer 2s infinite;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .form-group {
+      position: relative;
+      animation: slideInUp 0.8s ease-out;
+      animation-fill-mode: both;
+    }
+
+    .form-group:nth-child(1) { animation-delay: 0.1s; }
+    .form-group:nth-child(2) { animation-delay: 0.2s; }
+    .form-group:nth-child(3) { animation-delay: 0.3s; }
+    .form-group:nth-child(4) { animation-delay: 0.4s; }
+
+    label {
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      display: block;
+      font-size: 0.95rem;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 15px 20px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      font-size: 16px;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(8px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      color: var(--text-primary);
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: rgba(102, 126, 234, 0.6);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1), 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    input::placeholder {
+      color: rgba(77, 85, 104, 0.6);
+    }
+
+    button {
+      padding: 16px 32px;
+      background: var(--primary-gradient);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 10px;
+    }
+
+    button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+      transition: left 0.5s;
+    }
+
+    button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    button:hover::before {
+      left: 100%;
+    }
+
+    button:active {
+      transform: translateY(-1px);
+    }
+
+    #result {
+      margin-top: 30px;
+      animation: slideInUp 0.6s ease-out;
+    }
+
+    .loading {
+      text-align: center;
+      color: var(--text-primary);
+      font-size: 18px;
+      position: relative;
+    }
+
+    .loading::after {
+      content: '';
+      position: absolute;
+      right: -30px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(102, 126, 234, 0.3);
+      border-top: 2px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: translateY(-50%) rotate(0deg); }
+      100% { transform: translateY(-50%) rotate(360deg); }
+    }
+
+    .success {
+      color: var(--text-primary);
+      animation: slideInUp 0.6s ease-out;
+    }
+
+    .error {
+      color: #e53e3e;
+      font-weight: 600;
+      text-align: center;
+      padding: 20px;
+      background: rgba(229, 62, 62, 0.1);
+      border-radius: 12px;
+      border: 1px solid rgba(229, 62, 62, 0.2);
+      animation: slideInUp 0.6s ease-out;
+    }
+
+    .result-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 15px;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      animation: slideInUp 0.6s ease-out;
+    }
+
+    .result-table th {
+      background: var(--primary-gradient);
+      color: white;
+      padding: 16px;
+      text-align: left;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 0.85rem;
+    }
+
+    .result-table td {
+      padding: 16px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+    }
+
+    .result-table tr:hover {
+      background: rgba(102, 126, 234, 0.05);
+      transform: scale(1.01);
+    }
+
+    .result-table tr:nth-child(even) {
+      background-color: rgba(0, 0, 0, 0.02);
+    }
+
+    .avatar-img {
+      width: 50px;
+      height: 50px;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 3px solid rgba(102, 126, 234, 0.3);
+      transition: all 0.3s ease;
+      animation: slideInUp 0.6s ease-out;
+    }
+
+    .avatar-img:hover {
+      transform: scale(1.2);
+      border-color: rgba(102, 126, 234, 0.6);
+      box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .container {
+        padding: 30px 20px;
+        margin: 10px;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+
+      .result-table {
+        font-size: 14px;
+      }
+
+      .result-table th,
+      .result-table td {
+        padding: 12px 8px;
+      }
+
+      .avatar-img {
+        width: 40px;
+        height: 40px;
+      }
+    }
+
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text-primary: #f7fafc;
+        --text-secondary: #e2e8f0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎓 Tra cứu học sinh</h1>
+    <form id="form">
+      <div class="form-group">
+        <label for="mode">Chế độ tra cứu:</label>
+        <select id="mode">
+          <option value="group">Truy cập lớp</option>
+          <option value="personal">Truy cập cá nhân</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="access_code">Mã truy cập:</label>
+        <input id="access_code" type="text" placeholder="Nhập mã truy cập" required />
+      </div>
+
+      <div class="form-group">
+        <label for="extra_code">Mã xem ngày sinh (nếu có):</label>
+        <input id="extra_code" type="text" placeholder="Nhập mã ngày sinh (nếu có)" />
+      </div>
+
+      <div class="form-group">
+        <button type="submit">🔍 Tra cứu</button>
+      </div>
+    </form>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    document.getElementById('form').onsubmit = async e => {
+      e.preventDefault();
+      const resultEl = document.getElementById('result');
+      resultEl.innerHTML = '<div class="loading">⏳ Đang tra cứu...</div>';
+      resultEl.className = '';
+
+      const res = await fetch('/api/get-students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_code: document.getElementById('access_code').value,
+          mode: document.getElementById('mode').value,
+          extra_code: document.getElementById('extra_code').value
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && Array.isArray(data.students)) {
+        if (data.students.length === 0) {
+          resultEl.innerHTML = '<div class="error">⚠️ Không tìm thấy học sinh nào.</div>';
+          return;
+        }
+
+        const table = document.createElement('table');
+        table.className = 'result-table';
+
+        // Tiêu đề cột
+        const headers = Object.keys(data.students[0]);
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        headers.forEach(h => {
+          const th = document.createElement('th');
+          th.textContent = h;
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Dữ liệu
+        const tbody = document.createElement('tbody');
+        data.students.forEach((student, index) => {
+          const row = document.createElement('tr');
+          row.style.animationDelay = `${index * 0.1}s`;
+          
+          headers.forEach(h => {
+            const td = document.createElement('td');
+            if (h === "avatar_url" && student[h]) {
+              const img = document.createElement('img');
+              img.src = student[h];
+              img.alt = "Avatar";
+              img.className = "avatar-img";
+              td.appendChild(img);
+            } else {
+              td.textContent = student[h];
+            }
+            row.appendChild(td);
+          });
+          tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+
+        resultEl.innerHTML = '';
+        resultEl.appendChild(table);
+        resultEl.className = 'success';
+      } else {
+        resultEl.innerHTML = `<div class="error">❌ ${data.error || 'Có lỗi xảy ra'}</div>`;
+      }
+    };
+
+    // Add some interactive effects
+    document.querySelectorAll('input, select').forEach(input => {
+      input.addEventListener('focus', function() {
+        this.parentElement.style.transform = 'translateY(-2px)';
+      });
+      
+      input.addEventListener('blur', function() {
+        this.parentElement.style.transform = 'translateY(0)';
+      });
+    });
+  </script>
+</body>
+</html>
